@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import createContainer from './helpers/createContainer';
+import { createContainer } from '@rstone770/brandy';
+import createValue from './helpers/createValue';
 import { lifecycles, types } from '../src';
 
 describe('lifecycles', () => {
@@ -53,7 +54,7 @@ describe('lifecycles', () => {
     it('returns the same instance if registered with SINGLETON.', () => {
       const container = lifecycles(createContainer)();
 
-      container.bind('bind', () => {}, { lifecycle: types.SINGLETON });
+      container.bind('bind', () => createValue(), { lifecycle: types.SINGLETON });
       expect(container.instance('bind')).to.equal(container.instance('bind'));
 
       container.factory('factory', () => {}, { lifecycle: types.SINGLETON });
@@ -63,21 +64,35 @@ describe('lifecycles', () => {
     it('returns new instances if registered with TRANSIENT.', () => {
       const container = lifecycles(createContainer)();
 
-      container.bind('bind', () => {}, { lifecycle: types.TRANSIENT });
+      container.bind('bind', () => createValue(), { lifecycle: types.TRANSIENT });
       expect(container.instance('bind')).to.not.equal(container.instance('bind'));
 
-      container.factory('factory', () => {}, { lifecycle: types.TRANSIENT });
+      container.factory('factory', () => createValue(), { lifecycle: types.TRANSIENT });
       expect(container.instance('factory')).to.not.equal(container.instance('factory'));
     });
 
     it('should use SINGLETON lifecycle by default.', () => {
       const container = lifecycles(createContainer)();
 
-      container.bind('bind', () => {});
+      container.bind('bind', () => createValue());
       expect(container.instance('bind')).to.equal(container.instance('bind'));
 
-      container.factory('factory', () => {});
+      container.factory('factory', () => createValue());
       expect(container.instance('factory')).to.equal(container.instance('factory'));
+    });
+
+    it('preserves lifecycles of dependencies.', () => {
+      const container = lifecycles(createContainer)();
+
+      container.factory('t', () => createValue(), { lifecycle: types.TRANSIENT });
+      container.factory('s', () => createValue(), { lifecycle: types.SINGLETON });
+      container.factory('factory', (t, s) => ({ t, s }), { lifecycle: types.TRANSIENT, dependencies: ['t', 's'] });
+
+      const left = container.instance('factory'),
+            right = container.instance('factory');
+
+      expect(left.s).to.equal(right.s);
+      expect(left.t).to.not.equal(right.t);
     });
   });
 });

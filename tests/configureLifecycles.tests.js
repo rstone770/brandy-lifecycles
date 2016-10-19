@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import createContainer from './helpers/createContainer';
+import { createContainer } from '@rstone770/brandy';
+import createValue from './helpers/createValue';
 import { configureLifecycles, types } from '../src';
 
 describe('configureLifecycles', () => {
@@ -33,23 +34,23 @@ describe('configureLifecycles', () => {
     expect(container.instance).to.be.a('function');
   });
 
-  it('uses defaultLifecycle=transient if one is not provided', () => {
+  it('uses defaultLifecycle=TRANSIENT if one is not provided', () => {
     const container = configureLifecycles(types.TRANSIENT)(createContainer)();
 
-    container.bind('bind', () => {});
+    container.bind('bind', () => createValue());
     expect(container.instance('bind')).to.not.equal(container.instance('bind'));
 
-    container.factory('factory', () => {});
+    container.factory('factory', () => createValue());
     expect(container.instance('factory')).to.not.equal(container.instance('factory'));
   });
 
-  it('uses defaultLifecycle=singelton if one is not provided', () => {
+  it('uses defaultLifecycle=SINGLETON if one is not provided', () => {
     const container = configureLifecycles(types.SINGLETON)(createContainer)();
 
-    container.bind('bind', () => {});
+    container.bind('bind', () => createValue());
     expect(container.instance('bind')).to.equal(container.instance('bind'));
 
-    container.factory('factory', () => {});
+    container.factory('factory', () => createValue());
     expect(container.instance('factory')).to.equal(container.instance('factory'));
   });
 });

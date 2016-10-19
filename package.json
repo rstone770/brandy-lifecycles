@@ -1,6 +1,6 @@
 {
   "name": "@rstone770/brandy-lifecycles",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Brandy lifecycles enhancer.",
   "main": "dist/brandy-lifecycles.js",
   "scripts": {
@@ -34,6 +34,7 @@
   },
   "homepage": "https://github.com/rstone770/brandy-lifecycles#readme",
   "devDependencies": {
+    "@rstone770/brandy": "^2.0.2",
     "babel-core": "^6.14.0",
     "babel-eslint": "^6.1.2",
     "babel-loader": "^6.2.5",

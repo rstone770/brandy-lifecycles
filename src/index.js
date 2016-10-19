@@ -1,6 +1,8 @@
 const SINGLETON = 'singleton',
       TRANSIENT = 'transient';
 
+const createFromConstructor = (ctor, args) => new (Function.bind.apply(ctor, [null, ...args]))();
+
 /**
  * Ensures that a value is a lifecycle assignable value.
  *
@@ -68,65 +70,77 @@ export const configureLifecycles = (defaultLifecycle) => {
             singletons = {};
 
       /**
-       * Enhances a registration method so that it auto registers singleton activators.
+       * Creates a factory method that will cache results into the singletons cache.
        *
-       * @param {function} next
-       * @returns {function(*=, *=, *=)}
+       * @param {string} name
+       * @param {function} activator
+       * @returns {function(...[*])}
        */
-      const enhanceRegistrationMethod = (next) => {
-        return (name, activator, options) => {
-          const lifecycle = getLifecycleFromOptions(options);
+      const createSingletonFactory = (name, activator) => {
+        return (...dependencies) => {
+          const descriptor = singletons[name];
 
-          if (lifecycle === SINGLETON) {
-            singletons[name] = createSingleton();
+          if (!descriptor.isCreated) {
+            descriptor.value = activator(...dependencies);
+            descriptor.isCreated = true;
           }
 
-          next(name, activator, options);
-
-          return api;
+          return descriptor.value;
         };
       };
 
       /**
-       * Binds a constructor, supporting singletons.
+       * Binds a constructor to a name.
        *
        * @param {string} name
        * @param {function} constructor
-       * @param {object=} options
+       * @param {object} options
        * @returns {object}
        */
-      const bind = enhanceRegistrationMethod(container.bind);
+      const bind = (name, constructor, options) => {
+        if (typeof constructor !== 'function') {
+          throw new TypeError('constructor must be a function.');
+        }
+
+        if (getLifecycleFromOptions(options) === SINGLETON) {
+          factory(
+            name,
+            (...dependencies) => createFromConstructor(constructor, dependencies),
+            options
+          );
+        } else {
+          container.bind(name, constructor, options);
+        }
+
+        return api;
+      };
 
       /**
-       * Binds a factory, supporting singletons.
+       * Binds a factory to a name.
        *
        * @param {string} name
        * @param {function} factory
-       * @param {object=} options
+       * @param {object} options
        * @returns {object}
        */
-      const factory = enhanceRegistrationMethod(container.factory);
-
-      /**
-       * Returns instance bound by its name. Singleton values, always return the same instance.
-       *
-       * @param {string} name
-       * @returns {*}
-       */
-      const instance = (name) => {
-        const singleton = singletons[name],
-              next = container.instance;
-
-        if (singleton != null) {
-          if (singleton.isCreated === false) {
-            singleton.value = next(name);
-            singleton.isCreated = true;
-          }
-
-          return singleton.value;
+      const factory = (name, factory, options) => {
+        if (typeof factory !== 'function') {
+          throw new TypeError('factory must be a function.');
         }
 
-        return next(name);
+        if (getLifecycleFromOptions(options) === SINGLETON) {
+          singletons[name] = createSingleton();
+          container.factory(
+            name,
+            createSingletonFactory(name, factory),
+            options
+          );
+        } else {
+          singletons[name] = null;
+          container.factory(name, factory, options);
+        }
+
+        return api;
       };
 
       /**
@@ -137,8 +151,7 @@ export const configureLifecycles = (defaultLifecycle) => {
       const api = {
         ...container,
         bind,
-        factory,
-        instance
+        factory
       };
 
       return api;
